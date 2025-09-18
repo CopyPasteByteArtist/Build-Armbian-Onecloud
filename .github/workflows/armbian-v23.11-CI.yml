@@ -27,13 +27,34 @@ jobs:
       - id: get
         name: Get repositories information
         run: |
+          echo 'Run lscpu:'
+          lscpu
+          echo 'Run df -h:'
+          df -h
+          echo 'Run ls -la /mnt:'
+          ls -la /mnt
+          echo 'Run free -h:'
+          free -h
+          
+          sudo mkdir -p /mnt/Build-armbian-onecloud
+          sudo chown $USER:$GROUPS /mnt/Build-armbian-onecloud
+          
+          echo 'current dir:'
+          pwd
+          
+          echo ${{ github.workspace }}
+          echo $GITHUB_WORKSPACE
+          
+          mkdir -p /mnt/Build-armbian-onecloud/output
+          ln -sf /mnt/Build-armbian-onecloud/output ${{ github.workspace }}/output
+          
           TIME="$(curl https://api.github.com/repos/${SCRIPT_REPO}/actions/runs/${GITHUB_RUN_ID} | jq -r .created_at)"
           TAG="ci-$(date -d "${TIME}" -u +'%Y%m%d-%H%M%S-%Z')"
-
+          
           SCRIPT_SHA=$(curl https://api.github.com/repos/${SCRIPT_REPO}/commits/${SCRIPT_REF} | jq -r .sha)
           UBOOT_TAG=$(curl https://api.github.com/repos/${UBOOT_REPO}/releases/${UBOOT_RELEASE} | jq -r .tag_name)
           ARMBIAN_SHA=$(curl https://api.github.com/repos/${ARMBIAN_REPO}/commits/${ARMBIAN_REF} | jq -r .sha)
-
+          
           cat <<EOF | sed -E 's/^  //' >>$GITHUB_ENV
             TIME=$TIME
             TAG=$TAG
@@ -131,6 +152,26 @@ jobs:
       - name: Import env
         run: |
           echo "$(echo "${{ needs.prepare.outputs.env }}" | base64 -d)" >>$GITHUB_ENV
+          echo 'Run lscpu:'
+          lscpu
+          echo 'Run df -h:'
+          df -h
+          echo 'Run ls -la /mnt:'
+          ls -la /mnt
+          echo 'Run free -h:'
+          free -h
+          
+          sudo mkdir -p /mnt/Build-armbian-onecloud
+          sudo chown $USER:$GROUPS /mnt/Build-armbian-onecloud
+          
+          echo 'current dir:'
+          pwd
+          
+          echo ${{ github.workspace }}
+          echo $GITHUB_WORKSPACE
+          
+          mkdir -p /mnt/Build-armbian-onecloud/output
+          ln -sf /mnt/Build-armbian-onecloud/output ${{ github.workspace }}/output
 
       - name: Checkout
         uses: actions/checkout@main
@@ -211,6 +252,27 @@ jobs:
     steps:
       - name: Import env
         run: |
+          echo 'Run lscpu:'
+          lscpu
+          echo 'Run df -h:'
+          df -h
+          echo 'Run ls -la /mnt:'
+          ls -la /mnt
+          echo 'Run free -h:'
+          free -h
+          
+          sudo mkdir -p /mnt/Build-armbian-onecloud
+          sudo chown $USER:$GROUPS /mnt/Build-armbian-onecloud
+          
+          echo 'current dir:'
+          pwd
+          
+          echo ${{ github.workspace }}
+          echo $GITHUB_WORKSPACE
+          
+          mkdir -p /mnt/Build-armbian-onecloud/output
+          ln -sf /mnt/Build-armbian-onecloud/output ${{ github.workspace }}/output
+          
           echo "$(echo "${{ needs.prepare.outputs.env }}" | base64 -d)" >>$GITHUB_ENV
 
       - name: Checkout
