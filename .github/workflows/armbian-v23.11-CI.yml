@@ -109,7 +109,7 @@ jobs:
           tail --line=+2 Release.md >Body.md
 
       - name: Create release
-        uses: softprops/action-gh-release@main
+        uses: softprops/action-gh-release@master
         with:
           tag_name: ${{ env.TAG }}
           target_commitish: ${{ github.sha }}
@@ -171,7 +171,7 @@ jobs:
           path: output/debs/*
 
       - name: Upload to release
-        uses: softprops/action-gh-release@main
+        uses: softprops/action-gh-release@master
         with:
           tag_name: ${{ env.TAG }}
           files: |
@@ -324,7 +324,7 @@ jobs:
           EOF
 
       - name: Upload to release
-        uses: softprops/action-gh-release@main
+        uses: softprops/action-gh-release@master
         with:
           tag_name: ${{ env.TAG }}
           append_body: true
