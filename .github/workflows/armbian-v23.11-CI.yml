@@ -130,6 +130,15 @@ jobs:
 
           echo "NAME=$(head --line=1 Release.md)" >>$GITHUB_ENV
           tail --line=+2 Release.md >Body.md
+          
+          echo 'Run lscpu:'
+          lscpu
+          echo 'Run df -h:'
+          df -h
+          echo 'Run ls -la /mnt:'
+          ls -la /mnt
+          echo 'Run free -h:'
+          free -h
 
       - name: Create release
         uses: softprops/action-gh-release@master
@@ -208,6 +217,15 @@ jobs:
               EXPERT=yes \
               USE_CCACHE=no
           sudo chown $(id -u):$(id -g) -R output/
+          
+          echo 'Run lscpu:'
+          lscpu
+          echo 'Run df -h:'
+          df -h
+          echo 'Run ls -la /mnt:'
+          ls -la /mnt
+          echo 'Run free -h:'
+          free -h
 
       - name: Upload artifacts
         uses: actions/upload-artifact@main
@@ -233,7 +251,7 @@ jobs:
           - edge
           - current
         RELEASE:
-          - focal # Ubuntu 20.04 LTS
+          # - focal # Ubuntu 20.04 LTS
           - jammy # Ubuntu 22.04 LTS
           # - lunar # Ubuntu 23.04
           # - buster # Debian 10
@@ -378,15 +396,6 @@ jobs:
             sha256sum "$f" | tee -a sha256sum
             xz --threads=0 --compress "$f"
           done
-          
-          echo 'Run lscpu:'
-          lscpu
-          echo 'Run df -h:'
-          df -h
-          echo 'Run ls -la /mnt:'
-          ls -la /mnt
-          echo 'Run free -h:'
-          free -h
 
       - name: Upload artifacts
         uses: actions/upload-artifact@main
@@ -399,6 +408,15 @@ jobs:
           cat <<EOF | sed -E 's/^  //' | tee Release.md
             $(cat sha256sum | awk '{printf "%s: `%s`\n", $2, $1}')
           EOF
+          
+          echo 'Run lscpu:'
+          lscpu
+          echo 'Run df -h:'
+          df -h
+          echo 'Run ls -la /mnt:'
+          ls -la /mnt
+          echo 'Run free -h:'
+          free -h
 
       - name: Upload to release
         uses: softprops/action-gh-release@master
