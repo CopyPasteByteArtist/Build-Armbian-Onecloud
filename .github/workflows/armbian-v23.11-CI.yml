@@ -45,8 +45,10 @@ jobs:
           echo ${{ github.workspace }}
           echo $GITHUB_WORKSPACE
           
-          mkdir -p /mnt/Build-armbian-onecloud/output
-          ln -sf /mnt/Build-armbian-onecloud/output ${{ github.workspace }}/output
+          ln -sf /mnt/Build-armbian-onecloud ${{ github.workspace }}
+          
+          echo 'Run ls -la /mnt:'
+          ls -la /mnt
           
           TIME="$(curl https://api.github.com/repos/${SCRIPT_REPO}/actions/runs/${GITHUB_RUN_ID} | jq -r .created_at)"
           TAG="ci-$(date -d "${TIME}" -u +'%Y%m%d-%H%M%S-%Z')"
@@ -170,8 +172,10 @@ jobs:
           echo ${{ github.workspace }}
           echo $GITHUB_WORKSPACE
           
-          mkdir -p /mnt/Build-armbian-onecloud/output
-          ln -sf /mnt/Build-armbian-onecloud/output ${{ github.workspace }}/output
+          ln -sf /mnt/Build-armbian-onecloud ${{ github.workspace }}
+          
+          echo 'Run ls -la /mnt:'
+          ls -la /mnt
 
       - name: Checkout
         uses: actions/checkout@main
@@ -270,8 +274,10 @@ jobs:
           echo ${{ github.workspace }}
           echo $GITHUB_WORKSPACE
           
-          mkdir -p /mnt/Build-armbian-onecloud/output
-          ln -sf /mnt/Build-armbian-onecloud/output ${{ github.workspace }}/output
+          ln -sf /mnt/Build-armbian-onecloud ${{ github.workspace }}
+          
+          echo 'Run ls -la /mnt:'
+          ls -la /mnt
           
           echo "$(echo "${{ needs.prepare.outputs.env }}" | base64 -d)" >>$GITHUB_ENV
 
@@ -372,6 +378,15 @@ jobs:
             sha256sum "$f" | tee -a sha256sum
             xz --threads=0 --compress "$f"
           done
+          
+          echo 'Run lscpu:'
+          lscpu
+          echo 'Run df -h:'
+          df -h
+          echo 'Run ls -la /mnt:'
+          ls -la /mnt
+          echo 'Run free -h:'
+          free -h
 
       - name: Upload artifacts
         uses: actions/upload-artifact@main
