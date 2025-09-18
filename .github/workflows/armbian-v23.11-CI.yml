@@ -109,7 +109,7 @@ jobs:
           tail --line=+2 Release.md >Body.md
 
       - name: Create release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@main
         with:
           tag_name: ${{ env.TAG }}
           target_commitish: ${{ github.sha }}
@@ -133,7 +133,7 @@ jobs:
           echo "$(echo "${{ needs.prepare.outputs.env }}" | base64 -d)" >>$GITHUB_ENV
 
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@main
         with:
           repository: ${{ env.ARMBIAN_REPO }}
           ref: ${{ env.ARMBIAN_SHA }}
@@ -165,13 +165,13 @@ jobs:
           sudo chown $(id -u):$(id -g) -R output/
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@main
         with:
           name: debs-${{ matrix.BRANCH }}
           path: output/debs/*
 
       - name: Upload to release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@main
         with:
           tag_name: ${{ env.TAG }}
           files: |
@@ -214,7 +214,7 @@ jobs:
           echo "$(echo "${{ needs.prepare.outputs.env }}" | base64 -d)" >>$GITHUB_ENV
 
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@main
         with:
           repository: ${{ env.ARMBIAN_REPO }}
           ref: ${{ env.ARMBIAN_SHA }}
@@ -233,7 +233,7 @@ jobs:
           done
 
       - name: Download debs
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@main
         with:
           name: debs-${{ matrix.BRANCH }}
           path: output/debs/
@@ -312,7 +312,7 @@ jobs:
           done
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@main
         with:
           name: ${{ matrix.RELEASE }}-${{ matrix.BRANCH }}-${{ matrix.TYPE == 'desktop' && matrix.DESKTOP_ENVIRONMENT || matrix.TYPE }}
           path: output/images/*
@@ -324,7 +324,7 @@ jobs:
           EOF
 
       - name: Upload to release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@main
         with:
           tag_name: ${{ env.TAG }}
           append_body: true
