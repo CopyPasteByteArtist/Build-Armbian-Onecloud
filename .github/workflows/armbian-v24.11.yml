@@ -164,7 +164,7 @@ jobs:
           repository: ${{ env.ARMBIAN_REPO }}
           ref: ${{ env.ARMBIAN_SHA }}
 
-      - name: "Apply patch"
+      - name: "Apply patch ${{ env.PATCHES }}"
         if: ${{ env.PATCHES }}
         run: |
           echo "::group::Download"
