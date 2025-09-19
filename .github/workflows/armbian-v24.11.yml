@@ -159,7 +159,7 @@ jobs:
             ./compile.sh kernel \
               ALLOW_ROOT=yes \
               BOARD=onecloud \
-              BRANCH=${{ env.BRANCH }} \
+              BRANCH=${BRANCH} \
               EXPERT=yes \
               USE_CCACHE=no
           sudo chown $(id -u):$(id -g) -R output/
@@ -178,7 +178,7 @@ jobs:
             output/debs/*
 
   build:
-    name: Build ${{ env.RELEASE }}-${{ env.BRANCH }}-${{ env.TYPE }}
+    name: Build ${RELEASE}-${BRANCH}-${TYPE}
     needs: [ prepare, build-debs ]
     runs-on: ubuntu-22.04
     steps:
@@ -223,8 +223,8 @@ jobs:
             ./compile.sh build \
               ALLOW_ROOT=yes \
               BOARD=onecloud \
-              BRANCH=${{ env.BRANCH }} \
-              RELEASE=${{ env.RELEASE }} \
+              BRANCH=${BRANCH} \
+              RELEASE=${RELEASE} \
               KERNEL_CONFIGURE=no \
               BUILD_MINIMAL=yes \
               BUILD_DESKTOP=no \
@@ -280,7 +280,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ env.RELEASE }}-${{ env.BRANCH }}-${{ env.TYPE }}
+          name: ${RELEASE}-${BRANCH}-${TYPE}
           path: output/images/*
 
       - name: Generate release informations
