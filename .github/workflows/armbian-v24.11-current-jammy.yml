@@ -15,7 +15,7 @@ env:
   PATCHES_DISABLED: 5082
   BRANCH: current
   RELEASE: jammy
-  TYPE: ''
+  TYPE: ""
 
 permissions:
   contents: write
