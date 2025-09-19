@@ -178,7 +178,7 @@ jobs:
             output/debs/*
 
   build:
-    name: Build ${RELEASE}-${BRANCH}-${TYPE}
+    name: Build image
     needs: [ prepare, build-debs ]
     runs-on: ubuntu-22.04
     steps:
