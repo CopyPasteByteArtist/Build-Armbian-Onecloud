@@ -316,6 +316,15 @@ jobs:
           cat <<EOF | sed -E 's/^  //' | tee Release.md
             $(cat sha256sum | awk '{printf "%s: `%s`\n", $2, $1}')
           EOF
+          
+          echo 'Run lscpu:'
+          lscpu
+          echo 'Run df -h:'
+          df -h
+          echo 'Run ls -la /mnt:'
+          ls -la /mnt
+          echo 'Run free -h:'
+          free -h
 
       - name: Upload to release
         uses: softprops/action-gh-release@master
