@@ -16,6 +16,8 @@ env:
   BRANCH: current
   RELEASE: jammy
   TYPE: minimal
+  BUILD_MINIMAL: yes
+  BUILD_DESKTOP: no
 
 permissions:
   contents: write
@@ -254,8 +256,8 @@ jobs:
               BRANCH=${BRANCH} \
               RELEASE=${RELEASE} \
               KERNEL_CONFIGURE=no \
-              BUILD_MINIMAL=yes \
-              BUILD_DESKTOP=no \
+              BUILD_MINIMAL=${BUILD_MINIMAL} \
+              BUILD_DESKTOP=${BUILD_DESKTOP} \
               EXPERT=yes \
               SKIP_EXTERNAL_TOOLCHAINS=yes \
               CLEAN_LEVEL= \
