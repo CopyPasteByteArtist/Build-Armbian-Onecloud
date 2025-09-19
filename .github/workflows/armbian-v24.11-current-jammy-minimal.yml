@@ -1,4 +1,4 @@
-name: armbian-v24.11
+name: armbian-v24.11-current-jammy-minimal
 
 on:
   workflow_dispatch:
