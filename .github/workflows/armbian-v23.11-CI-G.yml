@@ -13,16 +13,17 @@ env:
   ARMBIAN_REF: v23.11
   PATCHES: 4077,5076
   PATCHES_DISABLED: 5082
+  BRANCH: current
+  RELEASE: jammy
+  TYPE: minimal
 
 permissions:
   contents: write
 
 jobs:
-  prepare:
-    name: Prepare
+  build:
+    name: Build ${{ env.RELEASE }}-${{ env.BRANCH }}-${{ env.TYPE }}
     runs-on: ubuntu-22.04
-    outputs:
-      env: ${{ steps.get.outputs.env }}
     steps:
       - id: get
         name: Get repositories information
@@ -41,7 +42,6 @@ jobs:
             UBOOT_TAG=$UBOOT_TAG
             ARMBIAN_SHA=$ARMBIAN_SHA
           EOF
-          echo "env=$(cat $GITHUB_ENV | base64 -w 0)" >>$GITHUB_OUTPUT
 
       - name: Show repositories information
         run: |
@@ -116,15 +116,6 @@ jobs:
           name: ${{ env.NAME }}
           body_path: Body.md
 
-  build:
-    name: Build
-    needs: prepare
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Import env
-        run: |
-          echo "$(echo "${{ needs.prepare.outputs.env }}" | base64 -d)" >>$GITHUB_ENV
-
       - name: Checkout
         uses: actions/checkout@main
         with:
@@ -167,51 +158,45 @@ jobs:
             echo "::endgroup::"
           done
 
-      - name: Build debs for edge
+      - name: Build debs
         run: |
-          rm -rf output/debs
           # Don't update remote cache
           export GITHUB_ACTIONS=false
           sudo --preserve-env \
             ./compile.sh kernel \
               ALLOW_ROOT=yes \
               BOARD=onecloud \
-              BRANCH=edge \
+              BRANCH=${{ env.BRANCH }} \
               EXPERT=yes \
               USE_CCACHE=no
           sudo chown $(id -u):$(id -g) -R output/
-          mkdir -p debs/edge
-          mv output/debs/* debs/edge/ 2>/dev/null || true
 
-      - name: Upload debs edge to release
+      - name: Upload debs to release
         uses: softprops/action-gh-release@master
         with:
           tag_name: ${{ env.TAG }}
           files: |
-            debs/edge/*
+            output/debs/*
 
-      - name: Build debs for current
+      - name: Build image
         run: |
-          rm -rf output/debs
           # Don't update remote cache
           export GITHUB_ACTIONS=false
           sudo --preserve-env \
-            ./compile.sh kernel \
+            ./compile.sh build \
               ALLOW_ROOT=yes \
               BOARD=onecloud \
-              BRANCH=current \
+              BRANCH=${{ env.BRANCH }} \
+              RELEASE=${{ env.RELEASE }} \
+              KERNEL_CONFIGURE=no \
+              BUILD_MINIMAL=yes \
+              BUILD_DESKTOP=no \
               EXPERT=yes \
-              USE_CCACHE=no
+              SKIP_EXTERNAL_TOOLCHAINS=yes \
+              CLEAN_LEVEL= \
+              USE_CCACHE=no \
+              COMPRESS_OUTPUTIMAGE=img
           sudo chown $(id -u):$(id -g) -R output/
-          mkdir -p debs/current
-          mv output/debs/* debs/current/ 2>/dev/null || true
-
-      - name: Upload debs current to release
-        uses: softprops/action-gh-release@master
-        with:
-          tag_name: ${{ env.TAG }}
-          files: |
-            debs/current/*
 
       - name: Install Dependents
         run: |
@@ -231,94 +216,36 @@ jobs:
           ./AmlImg unpack ./uboot.img burn/
           echo "::endgroup::"
 
-      - name: Build images
+      - name: Extract boot and rootfs partitions
         run: |
-          for branch in edge current; do
-            for release in jammy; do
-              for type in minimal cli desktop; do
-                build_minimal=no
-                build_desktop=no
-                des_env=
-                des_config=
-                des_apps=
-                img_type=$type
-                if [[ $type == "minimal" ]]; then
-                  build_minimal=yes
-                elif [[ $type == "desktop" ]]; then
-                  build_desktop=yes
-                  des_env=xfce
-                  des_config=config_base
-                  des_apps=""
-                  img_type=xfce
-                fi
+          diskimg=$(ls output/images/*.img)
+          loop=$(sudo losetup --find --show --partscan $diskimg)
+          sudo img2simg ${loop}p1 burn/boot.simg
+          sudo img2simg ${loop}p2 burn/rootfs.simg
+          sudo losetup -d $loop
+          sudo chown $(id -u):$(id -g) -R burn/
 
-                rm -rf output/debs output/images
-                cp debs/${branch}/* output/debs/ 2>/dev/null || true
+      - name: Generate burn image
+        run: |
+          echo -n "sha1sum $(sha1sum burn/boot.simg | awk '{print $1}')" >burn/boot.VERIFY
+          echo -n "sha1sum $(sha1sum burn/rootfs.simg | awk '{print $1}')" >burn/rootfs.VERIFY
 
-                # Don't update remote cache
-                export GITHUB_ACTIONS=false
-                sudo --preserve-env \
-                  ./compile.sh build \
-                    ALLOW_ROOT=yes \
-                    BOARD=onecloud \
-                    BRANCH=$branch \
-                    RELEASE=$release \
-                    KERNEL_CONFIGURE=no \
-                    BUILD_MINIMAL=$build_minimal \
-                    BUILD_DESKTOP=$build_desktop \
-                    DESKTOP_ENVIRONMENT=$des_env \
-                    DESKTOP_ENVIRONMENT_CONFIG_NAME=$des_config \
-                    DESKTOP_APPGROUPS_SELECTED=$des_apps \
-                    EXPERT=yes \
-                    SKIP_EXTERNAL_TOOLCHAINS=yes \
-                    CLEAN_LEVEL= \
-                    USE_CCACHE=no \
-                    COMPRESS_OUTPUTIMAGE=img
-                sudo chown $(id -u):$(id -g) -R output/
+          cat <<EOF >>burn/commands.txt
+          PARTITION:boot:sparse:boot.simg
+          VERIFY:boot:normal:boot.VERIFY
+          PARTITION:rootfs:sparse:rootfs.simg
+          VERIFY:rootfs:normal:rootfs.VERIFY
+          EOF
 
-                # Extract boot and rootfs partitions
-                diskimg=$(ls output/images/*.img)
-                loop=$(sudo losetup --find --show --partscan $diskimg)
-                sudo img2simg ${loop}p1 burn/boot.simg
-                sudo img2simg ${loop}p2 burn/rootfs.simg
-                sudo losetup -d $loop
-                sudo chown $(id -u):$(id -g) -R burn/
+          prefix=$(ls output/images/*.img | sed 's/\.img$//')
+          burnimg=${prefix}.burn.img
+          ./AmlImg pack $burnimg burn/
 
-                # Generate burn image
-                echo -n "sha1sum $(sha1sum burn/boot.simg | awk '{print $1}')" >burn/boot.VERIFY
-                echo -n "sha1sum $(sha1sum burn/rootfs.simg | awk '{print $1}')" >burn/rootfs.VERIFY
-
-                cat <<EOF >>burn/commands.txt
-                PARTITION:boot:sparse:boot.simg
-                VERIFY:boot:normal:boot.VERIFY
-                PARTITION:rootfs:sparse:rootfs.simg
-                VERIFY:rootfs:normal:rootfs.VERIFY
-                EOF
-
-                prefix=$(ls output/images/*.img | sed 's/\.img$//')
-                burnimg=${prefix}.burn.img
-                ./AmlImg pack $burnimg burn/
-
-                # Hash and compress images
-                > sha256sum
-                for f in output/images/*.img; do
-                  sha256sum "$f" | tee -a sha256sum
-                  xz --threads=0 --compress "$f"
-                done
-
-                # Upload artifacts
-                artifact_name="${release}-${branch}-${img_type}"
-                actions/upload-artifact --name "$artifact_name" --path "output/images/*"
-
-                # Generate release informations
-                cat <<EOF | sed -E 's/^  //' | tee Release.md
-                $(cat sha256sum | awk '{printf "%s: \`%s\`\n", \$2, \$1}')
-                EOF
-
-                # Upload to release
-                actions/upload-release-asset --tag "${TAG}" --file "output/images/Armbian_*" --name "${artifact_name}"
-              done
-            done
+      - name: Hash and compress images
+        run: |
+          for f in output/images/*.img; do
+            sha256sum "$f" | tee -a sha256sum
+            xz --threads=0 --compress "$f"
           done
           
           echo 'Run lscpu:'
@@ -329,6 +256,18 @@ jobs:
           ls -la /mnt
           echo 'Run free -h:'
           free -h
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@main
+        with:
+          name: ${{ env.RELEASE }}-${{ env.BRANCH }}-${{ env.TYPE }}
+          path: output/images/*
+
+      - name: Generate release informations
+        run: |
+          cat <<EOF | sed -E 's/^  //' | tee Release.md
+            $(cat sha256sum | awk '{printf "%s: `%s`\n", $2, $1}')
+          EOF
 
       - name: Upload to release
         uses: softprops/action-gh-release@master
