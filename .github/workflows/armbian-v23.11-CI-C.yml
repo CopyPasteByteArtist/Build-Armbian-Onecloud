@@ -1,0 +1,169 @@
+name: armbian-v23.11-CI-C
+
+on:
+  workflow_dispatch:
+
+env:
+  SCRIPT_REPO: ${{ github.repository }}
+  SCRIPT_REF: ${{ github.ref_name }}
+  UBOOT_REPO: hzyitc/u-boot-onecloud
+  UBOOT_RELEASE: latest
+  UBOOT_BURNIMG: eMMC.burn.img
+  ARMBIAN_REPO: armbian/build
+  ARMBIAN_REF: v23.11
+  PATCHES: 4077,5076
+  PATCHES_DISABLED: 5082
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Armbian Image
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Get repositories information
+        run: |
+          TIME="$(curl https://api.github.com/repos/${SCRIPT_REPO}/actions/runs/${GITHUB_RUN_ID} | jq -r .created_at)"
+          TAG="ci-$(date -d "${TIME}" -u +'%Y%m%d-%H%M%S-%Z')"
+
+          SCRIPT_SHA=$(curl https://api.github.com/repos/${SCRIPT_REPO}/commits/${SCRIPT_REF} | jq -r .sha)
+          UBOOT_TAG=$(curl https://api.github.com/repos/${UBOOT_REPO}/releases/${UBOOT_RELEASE} | jq -r .tag_name)
+          ARMBIAN_SHA=$(curl https://api.github.com/repos/${ARMBIAN_REPO}/commits/${ARMBIAN_REF} | jq -r .sha)
+
+          cat <<EOF | sed -E 's/^  //' >>$GITHUB_ENV
+            TIME=$TIME
+            TAG=$TAG
+            SCRIPT_SHA=$SCRIPT_SHA
+            UBOOT_TAG=$UBOOT_TAG
+            ARMBIAN_SHA=$ARMBIAN_SHA
+          EOF
+
+      - name: Checkout Armbian repo
+        uses: actions/checkout@main
+        with:
+          repository: ${{ env.ARMBIAN_REPO }}
+          ref: ${{ env.ARMBIAN_SHA }}
+
+      - name: Apply patches
+        if: ${{ env.PATCHES }}
+        run: |
+          echo 'Run lscpu:'
+          lscpu
+          echo 'Run df -h:'
+          df -h
+          echo 'Run ls -la /mnt:'
+          ls -la /mnt
+          echo 'Run free -h:'
+          free -h
+          
+          sudo mkdir -p /mnt/Build-armbian-onecloud
+          sudo chown $USER:$GROUPS /mnt/Build-armbian-onecloud
+          
+          echo 'current dir:'
+          pwd
+          
+          echo ${{ github.workspace }}
+          echo $GITHUB_WORKSPACE
+          
+          ln -sf /mnt/Build-armbian-onecloud ${{ github.workspace }}
+          
+          echo 'Run ls -la /mnt:'
+          ls -la /mnt
+          
+          curl -L -O "https://github.com/armbian/build/pull/{${PATCHES}}.patch"
+          for file in *.patch; do
+            patch --batch -p1 -N <"$file"
+          done
+
+      - name: Build kernel debs
+        run: |
+          export GITHUB_ACTIONS=false
+          sudo --preserve-env ./compile.sh kernel \
+            ALLOW_ROOT=yes \
+            BOARD=onecloud \
+            BRANCH=current \
+            EXPERT=yes \
+            USE_CCACHE=no
+          sudo chown $(id -u):$(id -g) -R output/
+
+      - name: Build image
+        run: |
+          export GITHUB_ACTIONS=false
+          sudo --preserve-env ./compile.sh build \
+            ALLOW_ROOT=yes \
+            BOARD=onecloud \
+            BRANCH=current \
+            RELEASE=jammy \
+            KERNEL_CONFIGURE=no \
+            BUILD_MINIMAL=yes \
+            BUILD_DESKTOP=no \
+            EXPERT=yes \
+            SKIP_EXTERNAL_TOOLCHAINS=yes \
+            USE_CCACHE=no \
+            COMPRESS_OUTPUTIMAGE=img
+          sudo chown $(id -u):$(id -g) -R output/
+
+      - name: Install Dependents
+        run: |
+          sudo apt install -y img2simg
+          ver="v0.3.1"
+          curl -L -o ./AmlImg https://github.com/hzyitc/AmlImg/releases/download/$ver/AmlImg_${ver}_linux_amd64
+          chmod +x ./AmlImg
+
+      - name: Download and unpack U-Boot
+        run: |
+          curl -L -o ./uboot.img https://github.com/${UBOOT_REPO}/releases/download/${UBOOT_TAG}/${UBOOT_BURNIMG}
+          ./AmlImg unpack ./uboot.img burn/
+
+      - name: Extract boot and rootfs partitions
+        run: |
+          diskimg=$(ls output/images/*.img)
+          loop=$(sudo losetup --find --show --partscan $diskimg)
+          sudo img2simg ${loop}p1 burn/boot.simg
+          sudo img2simg ${loop}p2 burn/rootfs.simg
+          sudo losetup -d $loop
+          sudo chown $(id -u):$(id -g) -R burn/
+
+      - name: Generate burn image
+        run: |
+          echo -n "sha1sum $(sha1sum burn/boot.simg | awk '{print $1}')" >burn/boot.VERIFY
+          echo -n "sha1sum $(sha1sum burn/rootfs.simg | awk '{print $1}')" >burn/rootfs.VERIFY
+          cat <<EOF >>burn/commands.txt
+          PARTITION:boot:sparse:boot.simg
+          VERIFY:boot:normal:boot.VERIFY
+          PARTITION:rootfs:sparse:rootfs.simg
+          VERIFY:rootfs:normal:rootfs.VERIFY
+          EOF
+          prefix=$(ls output/images/*.img | sed 's/\.img$//')
+          burnimg=${prefix}.burn.img
+          ./AmlImg pack $burnimg burn/
+
+      - name: Hash and compress images
+        run: |
+          for f in output/images/*.img; do
+            sha256sum "$f" | tee -a sha256sum
+            xz --threads=0 --compress "$f"
+          done
+          
+          echo 'Run lscpu:'
+          lscpu
+          echo 'Run df -h:'
+          df -h
+          echo 'Run ls -la /mnt:'
+          ls -la /mnt
+          echo 'Run free -h:'
+          free -h
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@main
+        with:
+          name: onecloud-jammy-current-minimal
+          path: output/images/*
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@master
+        with:
+          tag_name: ${{ env.TAG }}
+          files: output/images/Armbian_*
