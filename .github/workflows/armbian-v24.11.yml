@@ -127,7 +127,7 @@ jobs:
           tail --line=+2 Release.md >Body.md
 
       - name: Create release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
           target_commitish: ${{ github.sha }}
@@ -164,7 +164,7 @@ jobs:
           repository: ${{ env.ARMBIAN_REPO }}
           ref: ${{ env.ARMBIAN_SHA }}
 
-      - name: "Apply patch ${{ env.PATCHES }}"
+      - name: "Apply patch"
         if: ${{ env.PATCHES }}
         run: |
           echo "::group::Download"
