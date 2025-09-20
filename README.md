@@ -1,5 +1,5 @@
 # Armbian for Onecloud
-Armbian for Onecloud(WS1608)，Amlogic S805 CPU (32bit)，1G RAM + 8G eMMC ROM，AKA 玩客云3、赚钱宝3
+Armbian for Onecloud(WS1608)，Amlogic S805 CPU (32bit)，1G RAM + 8G eMMC ROM，1GbE，AKA 玩客云3、赚钱宝3
 
 ## First-time login
 
